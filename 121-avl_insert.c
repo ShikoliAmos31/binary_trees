@@ -1,66 +1,76 @@
 #include "binary_trees.h"
-
 /**
- * avl_insert - Inserts a value in an AVL Tree
- * @tree: Double pointer to the root node of the AVL tree
- * @value: Value to store in the node to be inserted
+ * avl_insert - Inserts a value into an AVL tree.
+ * @tree: A double pointer to the root node of the AVL tree to insert into.
+ * @value: The value to insert into the AVL tree.
  *
- * Return: Pointer to the created node, or NULL on failure
+ * Return: A pointer to the inserted node, or NULL on failure.
  */
 avl_t *avl_insert(avl_t **tree, int value)
 {
-	if (!tree)
-		return (NULL);
+	avl_t *new = NULL;
 
-	if (!*tree)
+	if (tree == NULL)
+		return (NULL);
+	if (*tree == NULL)
 	{
 		*tree = binary_tree_node(NULL, value);
-
-		if (!*tree)
-			return (NULL);
 		return (*tree);
 	}
-	if (value < (*tree)->n)
-	{
-		(*tree)->left = avl_insert(&(*tree)->left, value);
+	avl_t *parent = NULL;
+	avl_t **current = tree;
+	avl_t **child_ptrs[] = {&((*current)->left), &((*current)->right)};
 
-		if (!(*tree)->left)
-			return (NULL);
-	}
-	else if (value > (*tree)->n)
-	{
-		(*tree)->right = avl_insert(&(*tree)->right, value);
+	int num_children = sizeof(child_ptrs) / sizeof(child_ptrs[0]);
 
-		if (!(*tree)->right)
-			return (NULL);
-	}
-	else
+	for (int i = 0; i < num_children; i++)
 	{
-		/* Value already exists, return NULL */
+		parent = *current;
+		current = child_ptrs[i];
+
+		if (*current == NULL)
+			break;
+
+		if (value < (*current)->n)
+			break;
+		else if (value > (*current)->n)
+			continue;
+		else
+			return (*current); /* Value already exists, return NULL */
+	}
+	new = binary_tree_node(parent, value);
+
+	if (new == NULL)
 		return (NULL);
-	}
-	/* Update height of the current node */
-	(*tree)->height = 1 + max(height((*tree)->left), height((*tree)->right));
-	/* Get the balance factor to check if this node became unbalanced */
-	int balance = get_balance(*tree);
 
-	/* Left Left Case */
-	if (balance > 1 && value < (*tree)->left->n)
-		return (rotate_right(*tree));
-	/* Right Right Case */
-	if (balance < -1 && value > (*tree)->right->n)
-		return (rotate_left(*tree));
-	/* Left Right Case */
-	if (balance > 1 && value > (*tree)->left->n)
+	*current = new;
+	/* Update height of ancestors and perform rotations */
+	while (parent != NULL)
 	{
-		(*tree)->left = rotate_left((*tree)->left);
-		return (rotate_right(*tree));
+		parent->height = 1 + max(height(parent->left), height(parent->right));
+
+		int balance_factor = balance(parent);
+
+		/* Perform rotations if necessary */
+		if (balance_factor > 1 && value < parent->left->n)
+			parent = binary_tree_rotate_right(parent);
+
+		else if (balance_factor < -1 && value > parent->right->n)
+			parent = binary_tree_rotate_left(parent);
+
+		else if (balance_factor > 1 && value > parent->left->n)
+		{
+			parent->left = binary_tree_rotate_left(parent->left);
+			parent = binary_tree_rotate_right(parent);
+		}
+		else if (balance_factor < -1 && value < parent->right->n)
+		{
+			parent->right = binary_tree_rotate_right(parent->right);
+			parent = binary_tree_rotate_left(parent);
+		}
+		/* Move up the tree */
+		current = &(parent->parent);
+		parent = parent->parent;
 	}
-	/* Right Left Case */
-	if (balance < -1 && value < (*tree)->right->n)
-	{
-		(*tree)->right = rotate_right((*tree)->right);
-		return (rotate_left(*tree));
-	}
-	return (*tree);
+	return (new);
 }
